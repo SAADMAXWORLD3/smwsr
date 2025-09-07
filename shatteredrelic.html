@@ -1,0 +1,830 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shattered Relics</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        :root {
+            --bg-color: #1a1a1a;
+            --main-color: #d8d8d8;
+            --accent-color: #ff4500;
+            --button-bg: #333;
+            --button-border: #666;
+            --modal-bg: #222;
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: var(--bg-color);
+            color: var(--main-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        .container {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            min-height: 600px;
+            padding: 20px;
+            border: 2px solid var(--button-border);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            background-color: var(--button-bg);
+            text-align: center;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .container.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 3em;
+            text-shadow: 0 0 5px var(--accent-color);
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+
+        .button {
+            font-family: 'VT323', monospace;
+            padding: 12px 24px;
+            font-size: 1.5em;
+            background-color: var(--button-bg);
+            color: var(--main-color);
+            border: 2px solid var(--button-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            margin: 8px;
+            width: 80%;
+            max-width: 250px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .button:hover {
+            opacity: 0.9;
+        }
+
+        /* Specific Button Colors */
+        #play-button { background: linear-gradient(45deg, #00b894, #00a884); }
+        #how-to-play-button { background: linear-gradient(45deg, #fdcb6e, #e1a62d); }
+        #exit-button, #confirm-exit { background: linear-gradient(45deg, #d63031, #a32224); }
+        #cancel-exit, #back-button, #continue-button, #restart-game { background: linear-gradient(45deg, #6c5ce7, #5345b5); }
+        #shoot-self-button { background: linear-gradient(45deg, #74b9ff, #518ac6); }
+        #shoot-opponent-button { background: linear-gradient(45deg, #ff7675, #c65351); }
+        .item-button { background: linear-gradient(45deg, #95a5a6, #7f8c8d); }
+        .item-button:hover:not(:disabled) { background: linear-gradient(45deg, #bdc3c7, #95a5a6); }
+        .item-button.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--modal-bg);
+            padding: 25px;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons .button {
+            width: 45%;
+        }
+
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .game-state {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px;
+        }
+
+        .player-info, .opponent-info {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .opponent-info {
+            text-align: right;
+        }
+
+        .lives {
+            font-size: 1.8em;
+            margin: 5px 0;
+        }
+
+        .items-area {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px dashed var(--button-border);
+            width: 100%;
+            text-align: center;
+        }
+        
+        .item-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .item-button {
+            padding: 10px;
+            font-size: 1.2em;
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-border);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .item-icon {
+            font-size: 1.5em;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        .prompt {
+            font-size: 1.2em;
+            min-height: 50px;
+            margin: 20px 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .action-buttons .button {
+            width: 100%;
+        }
+
+        #result-message {
+            margin-top: 20px;
+            font-size: 1.5em;
+            color: var(--accent-color);
+            text-shadow: 0 0 5px var(--accent-color);
+            display: none;
+        }
+
+        #how-to-play-screen h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        #how-to-play-screen p {
+            margin-bottom: 10px;
+        }
+        #how-to-play-screen ul {
+            text-align: left;
+            margin: 0 auto;
+            max-width: 400px;
+            padding-left: 20px;
+        }
+        #how-to-play-screen li {
+            margin-bottom: 8px;
+        }
+        
+        #bot-items-area .item-list .item-button {
+            cursor: default;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-screen" class="container active">
+        <h1>Shattered Relics</h1>
+        <p>By SaadMaxWorld!</p>
+        <button id="play-button" class="button">Play</button>
+        <button id="how-to-play-button" class="button">How to Play</button>
+        <button id="exit-button" class="button">Exit</button>
+    </div>
+
+    <div id="how-to-play-screen" class="container">
+        <h2>How to Play</h2>
+        <p>Your goal is to be the last one standing in a tense duel against The Warden.</p>
+        <p>The shotgun is loaded with a mix of live and blank rounds. The number of each is known, while order is unknown.</p>
+        <h3>Your Turn:</h3>
+        <ul>
+            <li>**Shoot Yourself:** If you survive a blank round, your turn continues. If you are hit by a live round, your turn ends.</li>
+            <li>**Shoot The Warden:** Ifwarden is hit by a live round, your turn ends. If it's a blank round, your turn ends.</li>
+            <li>**Use Relics:** Using an item does not end your turn.</li>
+        </ul>
+        <h3>Relics:</h3>
+        <ul>
+            <li>**Cigarette 🚬:** Restores one life.</li>
+            <li>**Beer 🍺:** Ejects the current shell. If it's a blank round, your turn continues.</li>
+            <li>**Expired Medicine 💊:** A gamble. Has a 50/50 chance to restore a life or lose one.</li>
+            <li>**Cutter 🔪:** The next live round deals double damage.</li>
+            <li>**Handcuffs ⛓️:** Skips The Warden's next turn.</li>
+            <li>**Magnifying Glass 🔎:** Reveals the type of the next shell in the chamber.</li>
+        </ul>
+        <button id="back-button" class="button">Back</button>
+    </div>
+
+    <div id="game-screen" class="container">
+        <div class="game-state">
+            <div class="player-info">
+                <div>You</div>
+                <div class="lives">Lives: <span id="player-lives">3</span></div>
+            </div>
+            <div class="opponent-info">
+                <div>The Warden</div>
+                <div class="lives">Lives: <span id="bot-lives">3</span></div>
+            </div>
+        </div>
+
+        <div id="game-area">
+            <p id="game-prompt" class="prompt">The game is about to begin. The air is thick with tension.</p>
+
+            <div id="bot-items-area" class="items-area">
+                The Warden's Relics:
+                <div id="bot-items" class="item-list"></div>
+            </div>
+
+            <div id="player-items-area" class="items-area">
+                Your Relics:
+                <div id="player-items" class="item-list"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="shoot-self-button" class="button">Shoot Yourself</button>
+                <button id="shoot-opponent-button" class="button">Shoot The Warden</button>
+            </div>
+            <p id="result-message"></p>
+        </div>
+    </div>
+
+    <div id="exit-modal" class="modal">
+        <div class="modal-content">
+            <p>Are you sure you want to exit the game?</p>
+            <div class="modal-buttons">
+                <button id="confirm-exit" class="button">Yes</button>
+                <button id="cancel-exit" class="button">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="round-info-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="round-title"></h2>
+            <p id="round-info"></p>
+            <button id="continue-button" class="button">Continue</button>
+        </div>
+    </div>
+    
+    <div id="win-loss-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="win-loss-title"></h2>
+            <p id="win-loss-message"></p>
+            <button id="restart-game" class="button">OK</button>
+        </div>
+    </div>
+
+<script>
+    // --- UI Elements ---
+    const homeScreen = document.getElementById('home-screen');
+    const howToPlayScreen = document.getElementById('how-to-play-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const playButton = document.getElementById('play-button');
+    const howToPlayButton = document.getElementById('how-to-play-button');
+    const exitButton = document.getElementById('exit-button');
+    const backButton = document.getElementById('back-button');
+    const exitModal = document.getElementById('exit-modal');
+    const confirmExitButton = document.getElementById('confirm-exit');
+    const cancelExitButton = document.getElementById('cancel-exit');
+    const roundInfoModal = document.getElementById('round-info-modal');
+    const continueButton = document.getElementById('continue-button');
+    const playerLivesDisplay = document.getElementById('player-lives');
+    const botLivesDisplay = document.getElementById('bot-lives');
+    const playerItemsContainer = document.getElementById('player-items');
+    const botItemsContainer = document.getElementById('bot-items');
+    const gamePrompt = document.getElementById('game-prompt');
+    const shootSelfButton = document.getElementById('shoot-self-button');
+    const shootOpponentButton = document.getElementById('shoot-opponent-button');
+    const resultMessage = document.getElementById('result-message');
+    const roundTitle = document.getElementById('round-title');
+    const roundInfo = document.getElementById('round-info');
+    const winLossModal = document.getElementById('win-loss-modal');
+    const winLossTitle = document.getElementById('win-loss-title');
+    const winLossMessage = document.getElementById('win-loss-message');
+    const restartGameButton = document.getElementById('restart-game');
+
+    // --- Game State ---
+    let playerLives;
+    let botLives;
+    let chamber;
+    let playerTurn;
+    let playerItems;
+    let botItems;
+    let shotgunPower = 1;
+    let isBotHandcuffed = false;
+    let roundNumber;
+
+    // --- Sound Effects using Tone.js ---
+    const synth = new Tone.Synth().toDestination();
+    let isSamplerReady = false;
+    const sampler = new Tone.Sampler({
+        urls: {
+            "C4": "https://cdn.jsdelivr.net/gh/Tonejs/Tone.js/examples/audio/sfx/blip.mp3",
+        },
+        onload: () => {
+            console.log("Sampler loaded.");
+            isSamplerReady = true;
+        }
+    }).toDestination();
+    const liveShotSound = new Tone.NoiseSynth({
+        noise: {
+            type: 'white',
+        },
+        envelope: {
+            attack: 0.005,
+            decay: 0.1,
+            sustain: 0,
+            release: 0.05,
+        }
+    }).toDestination();
+    const blankShotSound = new Tone.MetalSynth({
+        envelope: {
+            attack: 0.001,
+            decay: 0.05,
+            release: 0.02,
+        },
+        frequency: 200,
+        harmonicity: 3,
+        modulationIndex: 10,
+        resonance: 4000
+    }).toDestination();
+
+    // --- Item Icons ---
+    const itemIcons = {
+        'Cigarette': '🚬',
+        'Beer': '🍺',
+        'Expired Medicine': '💊',
+        'Cutter': '🔪',
+        'Handcuffs': '⛓️',
+        'Magnifying Glass': '🔎'
+    };
+    const allItems = ['Cigarette', 'Beer', 'Expired Medicine', 'Cutter', 'Handcuffs', 'Magnifying Glass'];
+
+    // --- Game Logic ---
+    function playSound(type) {
+        if (Tone.context.state !== 'running') {
+            Tone.start();
+        }
+        if (type === 'live') {
+            liveShotSound.triggerAttackRelease('8n');
+        } else if (type === 'blank') {
+            blankShotSound.triggerAttackRelease('8n');
+        } else if (type === 'item') {
+            synth.triggerAttackRelease('C4', '8n');
+        } else if (type === 'menu') {
+            if (isSamplerReady) {
+                sampler.triggerAttack('C4');
+            } else {
+                synth.triggerAttackRelease('C5', '8n'); // Fallback sound
+            }
+        }
+    }
+
+    function initGame() {
+        playerLives = 3;
+        botLives = 3;
+        shotgunPower = 1;
+        isBotHandcuffed = false;
+        playerItems = [];
+        botItems = [];
+        roundNumber = 0;
+        
+        startNewRound();
+    }
+    
+    function startNewRound() {
+        roundNumber++;
+        const totalShells = Math.floor(Math.random() * 7) + 2; // 2 to 8 shells
+        const liveShells = Math.floor(Math.random() * (totalShells - 1)) + 1;
+        const blankShells = totalShells - liveShells;
+        
+        reloadChamber(liveShells, blankShells);
+        awardItems(totalShells);
+        showRoundInfoModal(liveShells, blankShells);
+    }
+
+    function startGame() {
+        updateUI();
+        gamePrompt.textContent = "Your turn. What will you do?";
+        playerTurn = true;
+        enableActions(true);
+    }
+
+    function updateUI() {
+        playerLivesDisplay.textContent = playerLives;
+        botLivesDisplay.textContent = botLives;
+        
+        // Update player items
+        playerItemsContainer.innerHTML = '';
+        playerItems.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.classList.add('button', 'item-button');
+            button.innerHTML = `${itemIcons[item]} ${item}`;
+            button.onclick = () => useItem(item, index);
+            playerItemsContainer.appendChild(button);
+        });
+
+        // Update bot items
+        botItemsContainer.innerHTML = '';
+        botItems.forEach((item) => {
+            const button = document.createElement('button');
+            button.classList.add('button', 'item-button', 'disabled');
+            button.innerHTML = `${itemIcons[item]} ${item}`;
+            botItemsContainer.appendChild(button);
+        });
+
+        // Hide item areas if no items are left
+        document.getElementById('player-items-area').style.display = playerItems.length > 0 ? 'block' : 'none';
+        document.getElementById('bot-items-area').style.display = botItems.length > 0 ? 'block' : 'none';
+    }
+
+    function enableActions(enabled) {
+        shootSelfButton.disabled = !enabled;
+        shootOpponentButton.disabled = !enabled;
+        document.querySelectorAll('#player-items .item-button').forEach(btn => btn.disabled = !enabled);
+    }
+
+    function useItem(item, index, userIsPlayer = true) {
+        enableActions(false);
+        let message = '';
+        let ejectedShell = null;
+        let livesRef = userIsPlayer ? 'playerLives' : 'botLives';
+        
+        switch(item) {
+            case 'Cigarette':
+                if (userIsPlayer) {
+                    playerLives = Math.min(3, playerLives + 1);
+                    message = "You take a drag of the cigarette. The pain fades away.";
+                } else {
+                    botLives = Math.min(3, botLives + 1);
+                    message = "The Warden uses a Cigarette, restoring a life.";
+                }
+                playSound('item');
+                break;
+            case 'Beer':
+                ejectedShell = chamber.shift();
+                if (userIsPlayer) {
+                    message = `You drink the beer and eject a shell. It was a ${ejectedShell} round. Your turn continues.`;
+                } else {
+                    message = `The Warden drinks a Beer and ejects a shell. It was a ${ejectedShell} round. His turn continues.`;
+                }
+                playSound('item');
+                break;
+            case 'Expired Medicine':
+                if (Math.random() < 0.5) {
+                    if (userIsPlayer) {
+                        playerLives = Math.min(3, playerLives + 1);
+                        message = "The medicine works! You feel a sudden surge of health.";
+                    } else {
+                        botLives = Math.min(3, botLives + 1);
+                        message = "The Warden's medicine works, restoring a life!";
+                    }
+                } else {
+                    if (userIsPlayer) {
+                        playerLives = Math.max(0, playerLives - 1);
+                        message = "The medicine backfires. You feel faint and lose a life.";
+                    } else {
+                        botLives = Math.max(0, botLives - 1);
+                        message = "The Warden's medicine backfires, losing a life.";
+                    }
+                }
+                playSound('item');
+                break;
+            case 'Cutter':
+                shotgunPower = 2;
+                if (userIsPlayer) {
+                    message = "You cut the barrel of the gun. The next shot will be twice as deadly!";
+                } else {
+                    message = "The Warden sharpens the shotgun's barrel. It looks dangerous now!";
+                }
+                playSound('item');
+                break;
+            case 'Handcuffs':
+                isBotHandcuffed = true;
+                message = "You put the handcuffs on The Warden. Their next turn is skipped!";
+                playSound('item');
+                break;
+            case 'Magnifying Glass':
+                const nextShell = chamber[0];
+                if (userIsPlayer) {
+                    message = `You look closely at the next shell. It's a ${nextShell} round.`;
+                } else {
+                    message = "The Warden uses a Magnifying Glass. He seems to know what's next.";
+                }
+                playSound('item');
+                break;
+        }
+
+        // Remove item and update UI
+        if (userIsPlayer) {
+            playerItems.splice(index, 1);
+        } else {
+            const botItemIndex = botItems.indexOf(item);
+            if (botItemIndex > -1) {
+                botItems.splice(botItemIndex, 1);
+            }
+        }
+        
+        gamePrompt.textContent = message;
+        updateUI();
+
+        // Turn does not end after using an item
+        if (userIsPlayer) {
+            enableActions(true);
+        } else {
+            setTimeout(botTurn, 2000);
+        }
+    }
+
+    function shoot(target) {
+        enableActions(false);
+        const shell = chamber.shift();
+        let message = '';
+        
+        if (shell === 'live') {
+            playSound('live');
+            if (target === 'player') {
+                playerLives -= shotgunPower;
+                message = `A live round! You take ${shotgunPower} damage. Your turn ends.`;
+                shotgunPower = 1; // Reset power after shot
+                updateUI();
+                setTimeout(endTurn, 2000);
+            } else {
+                botLives -= shotgunPower;
+                message = `A live round! The Warden takes ${shotgunPower} damage. Your turn ends.`;
+                shotgunPower = 1; // Reset power after shot
+                updateUI();
+                setTimeout(endTurn, 2000); // Change: End player's turn after shooting the bot with a live round
+            }
+        } else {
+            playSound('blank');
+            if (target === 'player') {
+                message = "A blank round. Nothing happens. Your turn continues.";
+                updateUI();
+                enableActions(true);
+            } else {
+                message = "A blank round. The Warden survives. Your turn ends.";
+                updateUI();
+                setTimeout(endTurn, 2000);
+            }
+        }
+        
+        gamePrompt.textContent = message;
+    }
+    
+    function endTurn() {
+        if (checkWin()) {
+            return;
+        }
+
+        if (chamber.length === 0) {
+            setTimeout(startNewRound, 2000);
+            return;
+        }
+        
+        playerTurn = !playerTurn;
+
+        if (playerTurn) {
+            gamePrompt.textContent = "Your turn. What will you do?";
+            enableActions(true);
+        } else {
+            if (isBotHandcuffed) {
+                gamePrompt.textContent = "The Warden is handcuffed. Your turn again!";
+                isBotHandcuffed = false;
+                setTimeout(endTurn, 2000);
+            } else {
+                gamePrompt.textContent = "The Warden's turn...";
+                setTimeout(botTurn, 2000);
+            }
+        }
+    }
+
+    // --- UPDATED BOT AI ---
+    // The bot now uses a more strategic approach to its turn.
+    function botTurn() {
+        enableActions(false);
+        
+        const nextShell = chamber[0];
+        const hasMagnifyingGlass = botItems.includes('Magnifying Glass');
+        const hasBeer = botItems.includes('Beer');
+        const hasCigarette = botItems.includes('Cigarette');
+        const hasCutter = botItems.includes('Cutter');
+        const hasHandcuffs = botItems.includes('Handcuffs');
+        
+        // Step 1: Use Magnifying Glass if available
+        if (hasMagnifyingGlass) {
+            const index = botItems.indexOf('Magnifying Glass');
+            useItem('Magnifying Glass', index, false);
+            setTimeout(botTurn, 2000);
+            return;
+        }
+
+        // Step 2: Use items based on current situation
+        // Use Beer to eject a blank shell, guaranteeing a hit on you next turn.
+        if (hasBeer && nextShell === 'blank') {
+            const index = botItems.indexOf('Beer');
+            useItem('Beer', index, false);
+            return; // Turn continues
+        }
+        
+        // Use Cigarette if lives are low.
+        if (botLives < playerLives && hasCigarette) {
+            const index = botItems.indexOf('Cigarette');
+            useItem('Cigarette', index, false);
+            return; // Turn continues
+        }
+        
+        // Use Handcuffs when player's health is critically low.
+        if (playerLives <= 1 && hasHandcuffs) {
+            const index = botItems.indexOf('Handcuffs');
+            useItem('Handcuffs', index, false);
+            return; // Turn continues
+        }
+        
+        // Use Cutter for a powerful shot if the bot has more lives than the player.
+        if (botLives > playerLives && hasCutter) {
+            const index = botItems.indexOf('Cutter');
+            useItem('Cutter', index, false);
+            return; // Turn continues
+        }
+
+        // Step 3: Determine whether to shoot self or player
+        // If the next shell is blank, shoot self to continue the turn.
+        if (chamber[0] === 'blank') {
+            gamePrompt.textContent = "The Warden confidently shoots himself...";
+            setTimeout(() => shoot('bot'), 1500);
+        } else { // nextShell is live
+            // If the next shell is live, shoot the player.
+            gamePrompt.textContent = "The Warden aims at you...";
+            setTimeout(() => shoot('player'), 1500);
+        }
+    }
+
+    function reloadChamber(liveCount, blankCount) {
+        const shells = [];
+        for (let i = 0; i < liveCount; i++) { shells.push('live'); }
+        for (let i = 0; i < blankCount; i++) { shells.push('blank'); }
+        chamber = shuffleArray(shells);
+    }
+    
+    function awardItems(totalShells) {
+        let numItemsToAward;
+        if (totalShells >= 2 && totalShells <= 3) {
+            numItemsToAward = 2;
+        } else if (totalShells >= 4 && totalShells <= 5) {
+            numItemsToAward = 3;
+        } else if (totalShells >= 6 && totalShells <= 8) {
+            numItemsToAward = 4;
+        }
+
+        for (let i = 0; i < numItemsToAward; i++) {
+            const randomIndex = Math.floor(Math.random() * allItems.length);
+            playerItems.push(allItems[randomIndex]);
+            botItems.push(allItems[randomIndex]);
+        }
+    }
+
+    function checkWin() {
+        if (playerLives <= 0) {
+            showWinLossModal("You Lose!", "Your legacy fades into the wasteland.");
+            return true;
+        }
+        if (botLives <= 0) {
+            showWinLossModal("You Win!", "The Warden's reign is over!");
+            return true;
+        }
+        return false;
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // --- Modal Functions ---
+    function showRoundInfoModal(liveCount, blankCount) {
+        roundTitle.textContent = `Round ${roundNumber}`;
+        roundInfo.textContent = `The shotgun is loaded with ${liveCount} live and ${blankCount} blank rounds.`;
+        roundInfoModal.style.display = 'flex';
+    }
+
+    function showWinLossModal(title, message) {
+        winLossTitle.textContent = title;
+        winLossMessage.textContent = message;
+        winLossModal.style.display = 'flex';
+        enableActions(false);
+    }
+    
+    // --- Event Listeners ---
+    playButton.addEventListener('click', () => {
+        playSound('menu');
+        initGame();
+    });
+
+    continueButton.addEventListener('click', () => {
+        playSound('menu');
+        roundInfoModal.style.display = 'none';
+        homeScreen.classList.remove('active');
+        gameScreen.classList.add('active');
+        startGame();
+    });
+
+    howToPlayButton.addEventListener('click', () => {
+        playSound('menu');
+        homeScreen.classList.remove('active');
+        howToPlayScreen.classList.add('active');
+    });
+
+    backButton.addEventListener('click', () => {
+        playSound('menu');
+        howToPlayScreen.classList.remove('active');
+        homeScreen.classList.add('active');
+    });
+
+    exitButton.addEventListener('click', () => {
+        playSound('menu');
+        exitModal.style.display = 'flex';
+    });
+
+    cancelExitButton.addEventListener('click', () => {
+        playSound('menu');
+        exitModal.style.display = 'none';
+    });
+
+    confirmExitButton.addEventListener('click', () => {
+        playSound('menu');
+        window.location.reload(); // Simple refresh to go back to the start
+    });
+    
+    restartGameButton.addEventListener('click', () => {
+        playSound('menu');
+        window.location.reload(); // Restarts the game from the beginning
+    });
+    
+    shootSelfButton.addEventListener('click', () => {
+        shoot('player');
+    });
+
+    shootOpponentButton.addEventListener('click', () => {
+        shoot('bot');
+    });
+
+    // Initial state on load
+    document.addEventListener('DOMContentLoaded', () => {
+        homeScreen.classList.add('active');
+    });
+</script>
+</body>
+</html>
